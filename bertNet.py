@@ -116,7 +116,7 @@ text_field = Field(use_vocab=False, tokenize=tokenizer.encode, lower=False, incl
                    fix_length=MAX_SEQ_LEN, pad_token=PAD_INDEX, unk_token=UNK_INDEX)
 fields = [('misogynous', label_field), ('clean', text_field)]  # Maybe try with text@
 
-train, valid, test = TabularDataset.splits(path='.data/', train='train.csv', validation='valid.csv',
+train, valid, test = TabularDataset.splits(path='.', train='train.csv', validation='valid.csv',
                                            test='test.csv', format='CSV', fields=fields, skip_header=True)
 
 # Iterators
