@@ -31,10 +31,10 @@ def clean_text(text):
     return text
 
 
-nlp = spacy.load("it_core_news_sm")
+nlp = spacy.load("it")
 
 training_identity = []
-with open('AMI2020_TrainingSet\AMI2020_training_identityterms.txt') as f:
+with open('AMI2020_TrainingSet/AMI2020_training_identityterms.txt') as f:
     for word in f.read().split():
         training_identity.append(word)
 
@@ -73,9 +73,9 @@ df_valid = pd.concat([df_real_valid, df_fake_valid], ignore_index=True, sort=Fal
 df_test = pd.concat([df_real_test, df_fake_test], ignore_index=True, sort=False)
 
 # Write preprocessed data
-df_train.to_csv('.data/train.csv', index=False)
-df_valid.to_csv('.data/valid.csv', index=False)
-df_test.to_csv('.data/test.csv', index=False)
+df_train.to_csv('./train.csv', index=False)
+df_valid.to_csv('./valid.csv', index=False)
+df_test.to_csv('./test.csv', index=False)
 
 # Libraries
 
