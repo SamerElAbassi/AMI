@@ -1,5 +1,7 @@
 import os
-
+import re
+import nltk
+from nltk.corpus import stopwords
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
@@ -32,8 +34,8 @@ def make_dir(outp):
         print("[Creating output directory in "+outp+"]")
         os.makedirs(outp)
 
-CORPUS = '../AMI2020_TrainingSet/AMI2020_training_raw.tsv'
-DATA_FRAME = pd.read_csv(CORPUS, '\t')
+CORPUS = 'noun_chuncks-no other preprocessing.tsv'
+DATA_FRAME = pd.read_csv(CORPUS, '\t',dtype=str)
 
 def average_confusion(confusion_matrices):
     avg = np.mean(confusion_matrices, axis=0)
@@ -117,7 +119,7 @@ def cv_with_combined(classifier, k_fold, data, misog, agresiv, runs=10):
     return (accuracy_scores, f1scores, auc_scores, average_confusion(confusion_matrices), split_inidices)
 
 
-def pos_ngrams(documents, N=3, M=3, lang='it'):
+def pos_ngrams(documents, N=3, M=3, lang='it_core_news_lg'):
     nlp = spacy.load(lang)
     pos_docs = []
     for idx,text in enumerate(documents):
@@ -151,7 +153,7 @@ def log_entropy(matrix):
     return log_ent
 
 
-model = LogisticRegression(penalty='l2', dual=True, tol=0.0001, max_iter=10000, 
+model = LogisticRegression(penalty='l2', dual=True, tol=0.0001, max_iter=100000,
                          C=3, fit_intercept=True, intercept_scaling=1.0, 
                          solver = 'liblinear', warm_start=False,
                          class_weight=None, random_state=None)
@@ -162,16 +164,17 @@ vectorizer = TfidfVectorizer(min_df=3,  max_features=None,
     ngram_range=(1, 2), use_idf=1, smooth_idf=1, sublinear_tf=1)
 
 
-data = DATA_FRAME['text']
+data=DATA_FRAME['clean'].astype(str)
+print(data)
 X = vectorizer.fit_transform(data)
-
-
+print('mers')
+'''
 acc_scores, f1_scores, auc_scores, avg_conf, split_inidices = cv_with_combined(model, 10, X, DATA_FRAME['misogynous'], DATA_FRAME['aggressiveness'], runs=10)
 print("combined")
 print ("\tAccuracy", np.mean(acc_scores), ' ', np.std(acc_scores))
 print ("\tF1 score", np.mean(f1_scores), ' ', np.std(f1_scores))
 print ("\tAverage confusion matrix\n", avg_conf)
-
+'''
 
 
 
@@ -219,7 +222,7 @@ print ("\tAverage confusion matrix\n", avg_conf)
 
 
 print ("doing pos_ngrams")
-X, X_tf, _ = pos_ngrams(data, N=2, M=3, lang='it')
+X, X_tf, _ = pos_ngrams(data, N=2, M=3, lang='it_core_news_lg')
 print("pos ngrams")
 labels = DATA_FRAME['misogynous']
 acc_scores, f1_scores, auc_scores, avg_conf, split_inidices = run_cv(model, 10, X, labels, runs=10)
@@ -258,6 +261,3 @@ acc_scores, f1_scores, auc_scores, avg_conf, split_inidices = run_cv(model, 10, 
 print ("\tAccuracy", np.mean(acc_scores), ' ', np.std(acc_scores))
 print ("\tF1 score", np.mean(f1_scores), ' ', np.std(f1_scores))
 print ("\tAverage confusion matrix\n", avg_conf)
-
-'''
-''' 
