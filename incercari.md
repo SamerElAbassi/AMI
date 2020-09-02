@@ -1,6 +1,6 @@
 Ca text preprocessing initial m am gandit sa nu scot si 'non' din sentences but then i found out it doesnt work like that. lemmatization decreased my accuracy. inca n-am incercat sa scot @-urile ca am zis ca o sa incerc sa le separ candva ca am vazut ca sunt si alea destul de misogine
-
-
+ Using noun chuncks decreased the accuracy of the models we tried. Removing the @'s and the links at the end of the tweet also decreased the accuracy. to be investigated why 
+ (my theory regarding the link part is that on twitter, the tweets that have a link at the end are the ones with images (the link being the image), maybe misogynists use more pictures? (sexist memes, jokes). The @'s should be split into smaller words, as i have noticed many of them contain offensive language)
 
 
 
