@@ -1,7 +1,5 @@
 import os
 import re
-import nltk
-from nltk.corpus import stopwords
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
@@ -15,15 +13,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.base import clone
 
 import pandas as pd
-import xgboost as xgb
 from scipy.sparse import hstack
 import spacy
-from flair.data import Sentence
-from flair.embeddings import WordEmbeddings
-
-
-import xgboost as xgb
-xgb_classifier = xgb.XGBClassifier()
 
 
 from noun_chunks import *
@@ -204,8 +195,8 @@ vectorizer = TfidfVectorizer(min_df=3,  max_features=None,
 
 
 
-train_df = pd.read_csv('AMI2020_training_raw.tsv', '\t')
-test_df = pd.read_csv('AMI2020_test_raw_gt.tsv', '\t')
+train_df = pd.read_csv('AMI2020_TrainingSet/AMI2020_training_raw.tsv', '\t')
+test_df = pd.read_csv('AMI2020_TestSet/AMI2020_test_raw_gt.tsv', '\t')
 
 
 train_data = train_df['text'].values
