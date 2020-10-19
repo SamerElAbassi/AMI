@@ -19,6 +19,9 @@ import spacy
 
 from noun_chunks import *
 
+# more effective to preload the language first
+lang='it_core_news_lg'
+nlp = spacy.load(lang)
 
 np.set_printoptions(precision = 2)
 
@@ -114,17 +117,7 @@ def cv_with_combined(classifier, k_fold, data, misog, agresiv, runs=10):
     return (accuracy_scores, f1scores, auc_scores, average_confusion(confusion_matrices), split_inidices)
 
 
-def get_noun_phrases_for_docs(documents, lang='it_core_news_lg'):
-    nlp = spacy.load(lang)
-    phrased = []
-    for idx, text in enumerate(documents):
-        doc = nlp(text)
-        phrases = [doc[start:end].text for start,end,_ in noun_chunks(doc)]
-        phrased.append(" ".join(phrases))
-    return phrased
-
-def get_noun_phrases_embeddings(documents, lang='it_core_news_lg'):
-    nlp = spacy.load(lang)
+def get_noun_phrases_embeddings(documents):
     phrased = []
     for idx, text in enumerate(documents):
         doc = nlp(text)
@@ -135,22 +128,19 @@ def get_noun_phrases_embeddings(documents, lang='it_core_news_lg'):
         phrased.append(phrases)
     return np.array(phrased)
 
-def get_spacy_embeddings(documents, lang='it_core_news_lg'):
-    nlp = spacy.load(lang)
+def get_spacy_embeddings(documents):
     phrased = []
     for idx, text in enumerate(documents):
         doc = nlp(text)
         phrased.append(doc.vector)
     return np.array(phrased)
 
-
-def pos_ngrams(documents, N=3, M=3, lang='it_core_news_lg'):
-    nlp = spacy.load(lang)
+def pos_ngrams(documents, N=3, M=3):
     pos_docs = []
     for idx,text in enumerate(documents):
         #print("Extracting POS for ", idx)
         doc = nlp(text)
-        pos_tags = " ".join([t.pos_ for t in doc])
+        pos_tags = " ".join([t.tag_ for t in doc])
         pos_docs.append(pos_tags)
     c = CountVectorizer(ngram_range=(N,M))
     tfidf = TfidfVectorizer(min_df=3,  max_features=None, 
@@ -159,6 +149,22 @@ def pos_ngrams(documents, N=3, M=3, lang='it_core_news_lg'):
     features = c.fit_transform(pos_docs)
     tfidf_ftrs = tfidf.fit_transform(pos_docs)
     return features, tfidf_ftrs, c
+
+def pronouns(documents, N=1, M=2):
+    pos_docs = []
+    for idx,text in enumerate(documents):
+        #print("Extracting POS for ", idx)
+        doc = nlp(text)
+        pos_tags = " ".join([t.text + ' ' + t.tag_ for t in doc if t.pos_ == 'PRON'])
+        pos_docs.append(pos_tags)
+    c = CountVectorizer(ngram_range=(N,M))
+    tfidf = TfidfVectorizer(min_df=3,  max_features=None, 
+        strip_accents='unicode', analyzer='word', #token_pattern=r'\w{1,}',
+        ngram_range=(N, M), use_idf=1, smooth_idf=1, sublinear_tf=1)
+    features = c.fit_transform(pos_docs)
+    tfidf_ftrs = tfidf.fit_transform(pos_docs)
+    return features, tfidf_ftrs, c
+
 
 def log_entropy(matrix):
     if type(matrix) is not np.ndarray:
@@ -188,36 +194,41 @@ model = LogisticRegression(penalty='l2', dual=True, tol=0.0001, max_iter=100000,
 #    strip_accents='unicode', analyzer='word', token_pattern=r'\b[^\d\W]+\b',
 #    ngram_range=(1, 5), use_idf=1, smooth_idf=1, sublinear_tf=1)
 
+from it_fun_wds import FUN_WDS
+
 vectorizer = TfidfVectorizer(min_df=3,  max_features=None,
     strip_accents='unicode', analyzer='word', token_pattern=r'\b[^\d\W]+\b',
-    ngram_range=(1, 5), use_idf=True)
+    ngram_range=(1, 5), use_idf=True)#, vocabulary = FUN_WDS)
 
 
 
 
-train_df = pd.read_csv('AMI2020_TrainingSet/AMI2020_training_raw.tsv', '\t')
-test_df = pd.read_csv('AMI2020_TestSet/AMI2020_test_raw_gt.tsv', '\t')
+train_df = pd.read_csv('AMI2020_TrainingSet/AMI2020_training_raw_nps.tsv', '\t')
+test_df = pd.read_csv('AMI2020_TestSet/AMI2020_test_raw_gt_nps.tsv', '\t')
 
 
 train_data = train_df['text'].values
+#train_data = train_df['nps'].values
 y_train_misog = train_df['misogynous']
 y_train_aggrs = train_df['aggressiveness']
 
 
-test_data = test_df['text'].values
+#test_data = test_df['text'].values
+test_data = test_df['nps'].values
 y_test_misog = test_df['misogynous']
 y_test_aggrs = test_df['aggressiveness']
 
 data = list(train_data) + list(test_data)
 
 #data = get_noun_phrases_for_docs(data)
-#X_cnt, X_tf, _ = pos_ngrams(data, N=2, M=3, lang='it_core_news_lg')
-#X = X_tf[:len(train_data)]
-#X_test = X_tf[len(train_data):]
+#X_cnt, X_tf, _ = pos_ngrams(data, N=2, M=3)
+X_cnt, X_tf, _ = pronouns(data)
+X = X_tf[:len(train_data)]
+X_test = X_tf[len(train_data):]
 
-vectorizer.fit(data)
-X = vectorizer.transform(data[:len(train_data)])
-X_test = vectorizer.transform(data[len(train_data):])
+#vectorizer.fit(data)
+#X = vectorizer.transform(data[:len(train_data)])
+#X_test = vectorizer.transform(data[len(train_data):])
 
 #nps_embds = get_noun_phrases_embeddings(data)
 #nps_embds = get_spacy_embeddings(data)
