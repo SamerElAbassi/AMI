@@ -17,6 +17,7 @@ from scipy.sparse import hstack
 import spacy
 
 
+from it_fun_wds import FUN_WDS
 from noun_chunks import *
 
 # more effective to preload the language first
@@ -135,12 +136,24 @@ def get_spacy_embeddings(documents):
         phrased.append(doc.vector)
     return np.array(phrased)
 
-def pos_ngrams(documents, N=3, M=3):
+def get_ftrs(tag):
+    ftrs = tag.split('|')
+    vals = []
+    for ft in ftrs:
+        parts = ft.split('=')
+        if len(parts) > 1:
+            vals.append(parts[1])
+        else:
+            vals.append(ft) 
+    return ' '.join(vals)
+
+def pos_ngrams(documents, N=2, M=3):
     pos_docs = []
     for idx,text in enumerate(documents):
         #print("Extracting POS for ", idx)
         doc = nlp(text)
-        pos_tags = " ".join([t.tag_ for t in doc])
+        #pos_tags = " ".join([t.tag_ for t in doc])
+        pos_tags = " ".join([get_ftrs(t.tag_) for t in doc])
         pos_docs.append(pos_tags)
     c = CountVectorizer(ngram_range=(N,M))
     tfidf = TfidfVectorizer(min_df=3,  max_features=None, 
@@ -150,21 +163,27 @@ def pos_ngrams(documents, N=3, M=3):
     tfidf_ftrs = tfidf.fit_transform(pos_docs)
     return features, tfidf_ftrs, c
 
-def pronouns(documents, N=1, M=2):
+def pos_ngrams_filtered(documents, filtered_pos, N=1, M=5):
     pos_docs = []
     for idx,text in enumerate(documents):
-        #print("Extracting POS for ", idx)
+        #print("Extracting POS for ", idx) 
         doc = nlp(text)
-        pos_tags = " ".join([t.text + ' ' + t.tag_ for t in doc if t.pos_ == 'PRON'])
+        ftrs = []
+        ftrs = [get_ftrs(t.tag_) for t in doc if t.pos_ in filtered_pos]
+        ftrs.extend([t.text for t in doc if t.pos_ in filtered_pos])
+        pos_tags = " ".join(ftrs)
         pos_docs.append(pos_tags)
     c = CountVectorizer(ngram_range=(N,M))
     tfidf = TfidfVectorizer(min_df=3,  max_features=None, 
-        strip_accents='unicode', analyzer='word', #token_pattern=r'\w{1,}',
+        strip_accents='unicode', analyzer='word', token_pattern=r'\w{1,}',
         ngram_range=(N, M), use_idf=1, smooth_idf=1, sublinear_tf=1)
     features = c.fit_transform(pos_docs)
     tfidf_ftrs = tfidf.fit_transform(pos_docs)
     return features, tfidf_ftrs, c
 
+def pronouns(documents, N=1, M=5):
+    filtered_pos = {'PRON'}
+    return pos_ngrams_filtered(documents, N, M, filtered_pos=filtered_pos)
 
 def log_entropy(matrix):
     if type(matrix) is not np.ndarray:
@@ -185,7 +204,7 @@ def log_entropy(matrix):
 
 
 model = LogisticRegression(penalty='l2', dual=True, tol=0.0001, max_iter=100000,
-                         C=3, fit_intercept=True, intercept_scaling=1.0, 
+                         C=1, fit_intercept=True, intercept_scaling=1.0, 
                          solver = 'liblinear', warm_start=False, 
                          class_weight=None, random_state=None)
 
@@ -194,7 +213,6 @@ model = LogisticRegression(penalty='l2', dual=True, tol=0.0001, max_iter=100000,
 #    strip_accents='unicode', analyzer='word', token_pattern=r'\b[^\d\W]+\b',
 #    ngram_range=(1, 5), use_idf=1, smooth_idf=1, sublinear_tf=1)
 
-from it_fun_wds import FUN_WDS
 
 vectorizer = TfidfVectorizer(min_df=3,  max_features=None,
     strip_accents='unicode', analyzer='word', token_pattern=r'\b[^\d\W]+\b',
@@ -213,22 +231,24 @@ y_train_misog = train_df['misogynous']
 y_train_aggrs = train_df['aggressiveness']
 
 
-#test_data = test_df['text'].values
-test_data = test_df['nps'].values
+test_data = test_df['text'].values
+#test_data = test_df['nps'].values
 y_test_misog = test_df['misogynous']
 y_test_aggrs = test_df['aggressiveness']
 
 data = list(train_data) + list(test_data)
 
 #data = get_noun_phrases_for_docs(data)
-#X_cnt, X_tf, _ = pos_ngrams(data, N=2, M=3)
-X_cnt, X_tf, _ = pronouns(data)
-X = X_tf[:len(train_data)]
-X_test = X_tf[len(train_data):]
+#X_cnt, X_tf, _ = pos_ngrams(data, N=2, M=7)
+#mix_pos = {'NOUN', 'ADV', 'ADP', 'DET', 'ADJ', 'VERB', 'AUX'}
+#X_cnt, X_tf, _ = pos_ngrams_filtered(data, filtered_pos=mix_pos)
+#X_cnt, X_tf, _ = pronouns(data)
+#X = X_tf[:len(train_data)]
+#X_test = X_tf[len(train_data):]
 
-#vectorizer.fit(data)
-#X = vectorizer.transform(data[:len(train_data)])
-#X_test = vectorizer.transform(data[len(train_data):])
+vectorizer.fit(data)
+X = vectorizer.transform(data[:len(train_data)])
+X_test = vectorizer.transform(data[len(train_data):])
 
 #nps_embds = get_noun_phrases_embeddings(data)
 #nps_embds = get_spacy_embeddings(data)
